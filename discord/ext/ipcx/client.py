@@ -5,7 +5,7 @@ from typing import Any, Optional
 import aiohttp
 from aiohttp.http_websocket import WSCloseCode
 
-from .errors import NotConnectedError, WebSocketClosedError
+from .errors import FailedToAcknowledge, NotConnectedError, WebSocketClosedError
 
 log = logging.getLogger(__name__)
 
@@ -102,13 +102,16 @@ class Client:
 
         return self.port
 
-    async def request(self, endpoint: str, **kwargs) -> Any:
+    async def request(self, endpoint: str, acknowledge: bool = False, **kwargs) -> Any:
         """Make a request to the IPC server process.
 
         Parameters
         ----------
         endpoint: str
             The endpoint to request on the server
+        acknowledge: bool
+            Whether to acknowledge the response and raise an exception if it contains a code
+            500 error. Defaults to False
         **kwargs
             The data to send to the endpoint
         """
@@ -160,4 +163,14 @@ class Client:
                     f"WebSocket connection unexpectedly closed with code: {close_code} ({reason})"
                 )
 
-            return recv.json()
+            result = recv.json()
+
+            if (
+                acknowledge
+                and isinstance(result, dict)
+                and "error" in result
+                and result.get("code") == 500
+            ):
+                raise FailedToAcknowledge(result["error"])
+
+            return result

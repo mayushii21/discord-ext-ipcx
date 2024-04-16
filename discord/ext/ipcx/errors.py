@@ -23,3 +23,7 @@ class NotConnectedError(IPCError):
 
 class WebSocketClosedError(IPCError):
     """Raised upon websocket being closed"""
+
+
+class FailedToAcknowledge(IPCError):
+    """Raised upon an error being raised within an IPC route"""
